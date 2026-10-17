@@ -3,12 +3,13 @@ import os
 from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
+from typing import Literal
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 from pydantic import BaseModel, ConfigDict, Field, StrictInt, StrictStr
 from sqlalchemy.exc import SQLAlchemyError
 
-from .database import Database, NotFound, RevisionConflict
+from .database import Database, InvalidStatus, NotFound, RevisionConflict, SegmentStatus
 
 logger = logging.getLogger(__name__)
 DEFAULT_DATABASE = Path(__file__).resolve().parents[1] / "data" / "translation.sqlite3"
@@ -18,6 +19,7 @@ class SaveRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     target_text: StrictStr
     base_revision: StrictInt = Field(ge=0)
+    status: SegmentStatus | None = None
 
 
 class SegmentResponse(BaseModel):
@@ -25,6 +27,7 @@ class SegmentResponse(BaseModel):
     position: int
     source_text: str
     target_text: str
+    status: SegmentStatus
     revision: int
 
 
@@ -40,8 +43,14 @@ class ProjectResponse(BaseModel):
 class SaveResponse(BaseModel):
     id: int
     target_text: str
+    status: SegmentStatus
     revision: int
     saved_at: datetime
+
+
+class ProjectExport(BaseModel):
+    format_version: Literal[1] = 1
+    project: ProjectResponse
 
 
 def create_app(database_path: Path | None = None) -> FastAPI:
@@ -73,15 +82,31 @@ def create_app(database_path: Path | None = None) -> FastAPI:
     def save_segment(project_id: int, segment_id: int, body: SaveRequest):
         try:
             return app.state.database.save_segment(
-                project_id, segment_id, body.target_text, body.base_revision,
+                project_id, segment_id, body.target_text, body.base_revision, body.status,
             )
         except NotFound:
             raise HTTPException(404, detail={"code": "not_found", "message": "Segmento não encontrado neste exercício."})
         except RevisionConflict:
             raise HTTPException(409, detail={"code": "revision_conflict", "message": "Existe uma revisão mais recente."})
+        except InvalidStatus as error:
+            raise HTTPException(422, detail={"code": "invalid_status", "message": str(error)})
         except SQLAlchemyError:
             logger.error("Não foi possível guardar a revisão na base de dados.")
             raise HTTPException(500, detail={"code": "save_failed", "message": "Não foi possível guardar a tradução."})
+
+    @app.get("/api/projects/{project_id}/export", response_model=ProjectExport)
+    def export_project(project_id: int, response: Response):
+        try:
+            # read_project lê todos os segmentos na mesma transação, sem criar revisões.
+            project = app.state.database.read_project(project_id)
+        except NotFound:
+            raise HTTPException(404, detail={"code": "not_found", "message": "Exercício não encontrado."})
+        except SQLAlchemyError:
+            logger.error("Não foi possível ler o exercício para exportação.")
+            raise HTTPException(500, detail={"code": "export_failed", "message": "Não foi possível exportar o exercício."})
+        response.headers["Content-Disposition"] = f'attachment; filename="exercicio-{project_id}.json"'
+        response.headers["Cache-Control"] = "no-store"
+        return ProjectExport(project=project)
 
     return app
 

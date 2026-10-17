@@ -1,8 +1,21 @@
+export type SegmentStatus = 'untranslated' | 'in_review' | 'completed';
+
+export const statusLabels: Record<SegmentStatus, string> = {
+  untranslated: 'Por traduzir',
+  in_review: 'Em revisão',
+  completed: 'Concluído',
+};
+
+export function statusForText(text: string): SegmentStatus {
+  return text.trim() ? 'in_review' : 'untranslated';
+}
+
 export interface Segment {
   id: number;
   position: number;
   source_text: string;
   target_text: string;
+  status: SegmentStatus;
   revision: number;
 }
 
@@ -18,8 +31,14 @@ export interface Project {
 export interface SavedSegment {
   id: number;
   target_text: string;
+  status: SegmentStatus;
   revision: number;
   saved_at: string;
+}
+
+export interface ProjectExport {
+  format_version: 1;
+  project: Project;
 }
 
 export class ApiError extends Error {
@@ -51,10 +70,14 @@ export function getProject(signal?: AbortSignal) {
   return request<Project>('/api/projects/1', {}, signal);
 }
 
-export function saveSegment(projectId: number, segmentId: number, text: string, revision: number) {
+export function getProjectExport(projectId: number) {
+  return request<ProjectExport>(`/api/projects/${projectId}/export`);
+}
+
+export function saveSegment(projectId: number, segmentId: number, text: string, revision: number, status: SegmentStatus) {
   return request<SavedSegment>(`/api/projects/${projectId}/segments/${segmentId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ target_text: text, base_revision: revision }),
+    body: JSON.stringify({ target_text: text, base_revision: revision, status }),
   });
 }

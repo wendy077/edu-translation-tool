@@ -3,12 +3,20 @@
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Literal
 
 from sqlalchemy import (
     CheckConstraint, Column, ForeignKey, ForeignKeyConstraint, Integer,
     MetaData, String, Table, Text, UniqueConstraint, create_engine, event,
     insert, select, update,
 )
+
+SegmentStatus = Literal["untranslated", "in_review", "completed"]
+
+
+def status_for_text(text: str) -> SegmentStatus:
+    return "in_review" if text.strip() else "untranslated"
+
 
 metadata = MetaData()
 projects = Table(
@@ -39,8 +47,10 @@ revisions = Table(
     Column("segment_id", ForeignKey("segments.id"), primary_key=True),
     Column("revision", Integer, primary_key=True),
     Column("target_text", Text, nullable=False),
+    Column("status", String, nullable=False, server_default="untranslated"),
     Column("saved_at", String, nullable=False),
     CheckConstraint("revision >= 0"),
+    CheckConstraint("status IN ('untranslated', 'in_review', 'completed')"),
 )
 
 
@@ -49,6 +59,10 @@ class NotFound(Exception):
 
 
 class RevisionConflict(Exception):
+    pass
+
+
+class InvalidStatus(Exception):
     pass
 
 
@@ -88,6 +102,21 @@ class Database:
     def initialize(self):
         metadata.create_all(self.engine)
         with self.write() as connection:
+            # Migração de 5A: acrescentar o estado sem recriar tabelas nem revisões.
+            columns = connection.exec_driver_sql("PRAGMA table_info(revisions)").mappings().all()
+            if not any(column["name"] == "status" for column in columns):
+                connection.exec_driver_sql(
+                    "ALTER TABLE revisions ADD COLUMN status TEXT NOT NULL DEFAULT 'untranslated' "
+                    "CHECK (status IN ('untranslated', 'in_review', 'completed'))"
+                )
+                previous = connection.execute(select(
+                    revisions.c.segment_id, revisions.c.revision, revisions.c.target_text,
+                )).mappings().all()
+                for row in previous:
+                    connection.execute(update(revisions).where(
+                        revisions.c.segment_id == row["segment_id"],
+                        revisions.c.revision == row["revision"],
+                    ).values(status=status_for_text(row["target_text"])))
             if connection.execute(select(projects.c.id).where(projects.c.id == 1)).first():
                 return
             connection.execute(insert(projects).values(
@@ -106,7 +135,7 @@ class Database:
                     source_text=original, current_revision=0,
                 ))
                 connection.execute(insert(revisions).values(
-                    segment_id=position, revision=0, target_text="", saved_at=utc_now(),
+                    segment_id=position, revision=0, target_text="", status="untranslated", saved_at=utc_now(),
                 ))
 
     def read_project(self, project_id: int) -> dict:
@@ -119,7 +148,7 @@ class Database:
             rows = connection.execute(
                 select(
                     segments.c.id, segments.c.position, segments.c.source_text,
-                    revisions.c.target_text, revisions.c.revision,
+                    revisions.c.target_text, revisions.c.status, revisions.c.revision,
                 ).select_from(segments.join(revisions,
                     (segments.c.id == revisions.c.segment_id)
                     & (segments.c.current_revision == revisions.c.revision)
@@ -127,7 +156,10 @@ class Database:
             ).mappings().all()
             return {**project, "segments": [dict(row) for row in rows]}
 
-    def save_segment(self, project_id: int, segment_id: int, target_text: str, base_revision: int) -> dict:
+    def save_segment(
+        self, project_id: int, segment_id: int, target_text: str, base_revision: int,
+        status: SegmentStatus | None = None,
+    ) -> dict:
         with self.write() as connection:
             segment = connection.execute(select(segments).where(
                 segments.c.id == segment_id, segments.c.project_id == project_id,
@@ -139,14 +171,19 @@ class Database:
             current = connection.execute(select(revisions).where(
                 revisions.c.segment_id == segment_id, revisions.c.revision == base_revision,
             )).mappings().one()
-            if current["target_text"] == target_text:
-                return {"id": segment_id, "target_text": target_text,
+            if status is None:
+                # Clientes 5A não enviam estado: preservar num no-op, reabrir se editarem.
+                status = current["status"] if current["target_text"] == target_text else status_for_text(target_text)
+            if status == "completed" and not target_text.strip():
+                raise InvalidStatus("Escreve uma tradução antes de marcar o segmento como concluído.")
+            if current["target_text"] == target_text and current["status"] == status:
+                return {"id": segment_id, "target_text": target_text, "status": status,
                         "revision": base_revision, "saved_at": current["saved_at"]}
-            result = {"id": segment_id, "target_text": target_text,
+            result = {"id": segment_id, "target_text": target_text, "status": status,
                       "revision": base_revision + 1, "saved_at": utc_now()}
             connection.execute(insert(revisions).values(
                 segment_id=segment_id, revision=result["revision"],
-                target_text=target_text, saved_at=result["saved_at"],
+                target_text=target_text, status=status, saved_at=result["saved_at"],
             ))
             connection.execute(update(segments).where(segments.c.id == segment_id).values(
                 current_revision=result["revision"],

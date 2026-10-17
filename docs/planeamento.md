@@ -6,7 +6,9 @@ Documento de trabalho de 17 de outubro de 2026. As decisões abaixo distinguem o
 
 O incremento **5A está implementado**: exercício fixo, editor React, API FastAPI, gravação manual, revisões em SQLite, proteção de rascunhos e tratamento de conflitos. Há testes automatizados da API e das interações do editor; a execução e o roteiro de verificação manual estão no [README](../README.md).
 
-Antes de avançar para 5B, executar o percurso nos dois computadores e confirmar a apresentação, o teclado e os diálogos no navegador. O incremento 5B e as funcionalidades posteriores continuam por implementar. Os testes técnicos de 5A não constituem resultados da avaliação pedagógica.
+As três partes de **5B estão implementadas**: estados por traduzir/em revisão/concluído guardados em cada revisão, alterações apenas de estado, migração das bases de dados 5A, exportação JSON das versões atuais guardadas e gravação automática após 1 segundo sem alterações. O botão Guardar mantém-se; erros e conflitos suspendem tentativas automáticas. A exportação do histórico/dados de processo e a importação de JSON pertencem a etapas posteriores.
+
+Executar o percurso nos dois computadores e confirmar a apresentação, o teclado e os diálogos no navegador. Os testes técnicos não constituem resultados da avaliação pedagógica.
 
 ## Decisões e pressupostos
 
@@ -44,7 +46,7 @@ Importação inicial: exercícios JSON e, posteriormente, texto com um segmento 
 
 O primeiro ecrã só necessita de lista de segmentos, original, campo de tradução, botão Guardar e indicação de alterações por guardar/guardado/erro. O [desenho e contrato de dados](editor.md) especifica esse percurso.
 
-**Incremento 5B:** gravação automática, estados e exportação JSON. Adicionar depois de o percurso com gravação explícita estar verificado.
+**Incremento 5B:** estados, exportação JSON e gravação automática implementados em alterações separadas. Confirmar o percurso completo nos dois computadores antes de acrescentar os próximos módulos.
 
 O incremento 5A não depende de instalar um modelo, concluir o estado da arte, terminar o conjunto de teste ou recrutar participantes. Depende apenas de aceitar o contrato mínimo do editor e o âmbito acima.
 
