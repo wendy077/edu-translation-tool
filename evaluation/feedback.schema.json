@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Feedback pedagógico por segmento — versão inicial",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["issues"],
+  "properties": {
+    "issues": {
+      "type": "array",
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["category", "source_evidence", "target_evidence", "explanation", "hint"],
+        "properties": {
+          "category": {"type": "string", "enum": ["empty", "numbers", "terminology", "meaning"]},
+          "source_evidence": {"type": "string", "minLength": 1},
+          "target_evidence": {"type": "string"},
+          "explanation": {"type": "string", "minLength": 1},
+          "hint": {"type": "string", "minLength": 1}
+        }
+      }
+    }
+  }
+}

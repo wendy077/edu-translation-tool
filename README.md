@@ -19,6 +19,13 @@ Este projeto tem como propósito o desenvolvimento e avaliação de uma ferramen
 ## Estado Atual
 O projeto encontra-se na sua fase inicial de planeamento, levantamento de requisitos e revisão da literatura/estado da arte. O desenvolvimento do protótipo e a documentação técnica serão incorporados incrementalmente nas próximas iterações.
 
+## Preparação do desenvolvimento
+* [Âmbito, prioridades e tarefas do primeiro incremento](docs/planeamento.md).
+* [Desenho do editor e contrato mínimo da API](docs/editor.md).
+* [Protocolo de avaliação, exemplos de desenvolvimento e ensaio do LLM local](evaluation/README.md).
+
+Estes materiais são propostas de trabalho. Os exemplos de avaliação têm anotações preliminares para revisão humana; ainda não existem resultados experimentais nem uma aplicação de tradução implementada.
+
 ## Equipa
 * Diogo Pinto (PG61515)
 * Mariana Pinto (PG61534)
