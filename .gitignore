@@ -13,3 +13,17 @@ paper/*.pdf
 *.log
 *.tmp
 *~
+
+# Backend local
+.venv/
+__pycache__/
+.pytest_cache/
+backend/data/
+
+# Frontend e resultados de testes
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+playwright-report/
+test-results/

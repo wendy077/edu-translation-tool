@@ -1,6 +1,12 @@
 # Preparação do primeiro incremento
 
-Documento de trabalho de 17 de outubro de 2026. As decisões abaixo distinguem o que foi confirmado pelo grupo das propostas de implementação. Não descrevem funcionalidades já implementadas.
+Documento de trabalho de 17 de outubro de 2026. As decisões abaixo distinguem o que foi confirmado pelo grupo das propostas de implementação. O estado da implementação é indicado na secção seguinte.
+
+## Estado da implementação
+
+O incremento **5A está implementado**: exercício fixo, editor React, API FastAPI, gravação manual, revisões em SQLite, proteção de rascunhos e tratamento de conflitos. Há testes automatizados da API e das interações do editor; a execução e o roteiro de verificação manual estão no [README](../README.md).
+
+Antes de avançar para 5B, executar o percurso nos dois computadores e confirmar a apresentação, o teclado e os diálogos no navegador. O incremento 5B e as funcionalidades posteriores continuam por implementar. Os testes técnicos de 5A não constituem resultados da avaliação pedagógica.
 
 ## Decisões e pressupostos
 

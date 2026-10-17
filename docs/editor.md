@@ -1,6 +1,6 @@
 # Editor: desenho e contrato do primeiro incremento
 
-Especificação proposta, ainda sem implementação. Corresponde ao incremento 5A do [planeamento](planeamento.md). Os identificadores dos exemplos são ilustrativos.
+Contrato do incremento 5A do [planeamento](planeamento.md), implementado em `frontend/` e `backend/`. As instruções de execução e verificação estão no [README](../README.md). Os exemplos de texto e datas são ilustrativos.
 
 ## Percurso e esboço do ecrã
 
@@ -28,7 +28,7 @@ O campo de tradução tem um rótulo visível, pode ser usado por teclado e mant
 
 Não mostrar botões simulados de QA, LLM ou memória neste primeiro ecrã. Aguardar a implementação real de cada funcionalidade.
 
-## Arquitetura proposta
+## Arquitetura
 
 ```mermaid
 flowchart LR
@@ -37,7 +37,7 @@ flowchart LR
     API -. Integração posterior .-> LLM[Ollama e modelo local]
 ```
 
-Começar com execução nativa local e dependências fixadas quando forem instaladas. O serviço do modelo é separado da API. Não é necessário Docker para verificar o primeiro percurso. Não publicar a instalação de desenvolvimento na Internet.
+A execução é nativa e local, com dependências fixadas em `backend/requirements.txt` e `frontend/package-lock.json`. O serviço do modelo será separado da API. Não é necessário Docker para verificar o primeiro percurso. Não publicar a instalação de desenvolvimento na Internet.
 
 ## Dados mínimos
 
@@ -57,7 +57,7 @@ Estados pedagógicos, eventos e feedback serão adicionados nos incrementos segu
 
 ## Dados de demonstração
 
-O backend poderá criar uma única vez este exercício se ainda não existir. Reiniciar não deve repor traduções nem duplicar segmentos.
+O backend cria uma única vez este exercício se ainda não existir. Reiniciar não repõe traduções nem duplica segmentos.
 
 `GET /api/projects/1` → `200`
 
@@ -126,4 +126,8 @@ No cliente, permitir no máximo um pedido de gravação pendente por segmento. Q
 - Uma revisão de base antiga produz conflito; um segmento de outro projeto não pode ser alterado por este URL.
 - Uma resposta antiga não marca como guardado texto escrito depois do pedido.
 
-Estes são critérios para futuros testes de integração e do percurso do editor. Não existem endpoints ou testes implementados nesta etapa.
+Os testes em `backend/tests/test_editor.py` verificam a API com SQLite, incluindo reinício, concorrência e reversão de transações. Os testes em `frontend/src/App.test.tsx` verificam as interações do editor com respostas simuladas da API, incluindo conflitos e falhas de ligação. A revisão visual e do comportamento nativo do navegador deve seguir o roteiro no README.
+
+Na persistência, a reserva de escrita do SQLite (`BEGIN IMMEDIATE`) é adquirida antes de verificar a revisão; assim, dois pedidos não podem guardar a partir da mesma versão. As chaves estrangeiras ficam ativas em todas as ligações. A revisão inicial e o segmento são criados na mesma transação, com a referência à revisão validada no final.
+
+Quando não é possível confirmar uma gravação, o editor conserva o rascunho e disponibiliza **Verificar gravação**. Só permite um novo envio depois de conhecer a versão persistida. Num conflito, **Manter o meu rascunho** atualiza a revisão de base, mas exige um novo clique em Guardar; **Usar versão guardada** substitui o rascunho apenas por escolha explícita.
